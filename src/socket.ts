@@ -1,4 +1,5 @@
 import { Server } from 'socket.io';
+import { filterJamSession } from './utils';
 
 export interface User {
 	username: string
@@ -14,8 +15,8 @@ export interface Viewer extends User {
 }
 
 export interface JamSession {
-	artist: Array<Artist>
-	viewer: Array<Viewer>
+	artists: Set<SocketId>
+	sockets: Set<SocketId>
 }
 
 export type Connection = string
@@ -52,10 +53,12 @@ export const socket = (io: Server): void => {
 
 	const dbUser = [
 		{
-			username: 'alfa'
+			username: 'alfa',
+			isArtist: true
 		},
 		{
 			username: 'charlie',
+			isArtist: false,
 			tickets: [
 				{
 					streamId: '1'
@@ -65,7 +68,7 @@ export const socket = (io: Server): void => {
 	]
 
 	const jams: Record<Connection, JamSession> = {};
-	const socketToJams: Record<SocketId, Connection> = {}
+	const socketToJam: Record<SocketId, Connection> = {}
 
 	io.on('connection', socket => {
 		socket.on("connect", ({ streamId, username }: ConnectionConnect) => {
@@ -81,7 +84,9 @@ export const socket = (io: Server): void => {
 				socket.emit('stream_not_started')
 				return
 			}
-			socketToJams[socket.id] = streamId
+
+			socketToJam[socket.id] = streamId
+
 			const user = dbUser.find(el => el.username === username)
 
 			if (!user) {
@@ -92,25 +97,24 @@ export const socket = (io: Server): void => {
 			const isArtist = stream.artists.find(el => el === username)
 
 			if (isArtist) {
-				dbStream[streamId].artists.push(socket.id)
+				jams[streamId].artists.add(socket.id)
+				io.to(streamId).emit('new_artist', { socket: socket.id })
 			} else if (!user.tickets.find(el => el.streamId === streamId)) {
 				socket.emit('no_access')
 				return
-			} else {
-				dbStream[streamId].viewers.push(socket.id)
 			}
 
-			socket.emit('artists', stream.artists.filter(id => id !== socket.id))
+			jams[streamId].sockets.add(socket.id)
+
+			socket.emit('connections', filterJamSession(jams[streamId], id => id !== socket.id))
 		});
 
 		socket.on('disconnect', () => {
-			const conn: Connection = socketToJams[socket.id]
-			const stream = dbStream[conn]
+			const streamId: Connection = socketToJam[socket.id]
+			const stream = jams[streamId]
 
 			if (stream) {
-				stream.artists = stream.artists.filter(id => id !== socket.id);
-				stream.viewers = stream.viewers.filter(id => id !== socket.id)
-				jams[conn] = stream;
+				jams[streamId] = filterJamSession(stream, id => id !== socket.id);
 			}
 		});
 	});
