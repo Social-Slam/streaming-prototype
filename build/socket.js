@@ -1,18 +1,22 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.socket = void 0;
+var utils_1 = require("./utils");
+var jwt = require("jsonwebtoken");
+var JWT_SECRET = 'your-256-bit-secret';
 exports.socket = function (io) {
     var dbStream = [
         {
-            id: 1,
+            id: '1',
             isFree: true,
-            artists: ['alfa'],
-            viewers: ['charlie'],
+            artists: ['alpha'],
+            viewers: ['bravo'],
             startsAt: '2020-05-13 17:30:00',
             isComplete: false,
             socket: 'asdf'
         },
         {
-            id: 2,
+            id: '2',
             isFree: false,
             artists: ['echo', 'foxtrot'],
             viewers: ['gamma', 'hotel']
@@ -20,10 +24,13 @@ exports.socket = function (io) {
     ];
     var dbUser = [
         {
-            username: 'alfa'
+            username: 'alpha',
+            isArtist: true,
+            tickets: []
         },
         {
-            username: 'charlie',
+            username: 'bravo',
+            isArtist: false,
             tickets: [
                 {
                     streamId: '1'
@@ -32,49 +39,63 @@ exports.socket = function (io) {
         }
     ];
     var jams = {};
-    var socketToJams = {};
+    var socketToJam = {};
     io.on('connection', function (socket) {
-        socket.on("connect", function (_a) {
-            var streamId = _a.streamId, username = _a.username;
-            var stream = dbStream[streamId];
+        socket.on("connect_to_room", function (options) {
+            var streamId = options.streamId, token = options.token;
+            var username;
+            try {
+                var decoded = jwt.verify(token, JWT_SECRET);
+                username = decoded['sub'];
+            }
+            catch (e) {
+                console.warn(e);
+                socket.send({ error: 'invalid_token' });
+                return;
+            }
+            var stream = dbStream.find(function (el) { return el.id === streamId; });
             if (!stream) {
-                socket.emit('invalid_connection');
+                socket.send({ error: 'invalid_connection' });
                 return;
             }
             else if (stream.isComplete) {
-                socket.emit('stream_complete');
+                socket.send({ msg: 'stream_complete' });
                 return;
             }
             else if (Date.parse(stream.startsAt) > Date.now()) {
-                socket.emit('stream_not_started');
+                socket.send({ msg: 'stream_not_started' });
                 return;
             }
-            socketToJams[socket.id] = streamId;
+            socketToJam[socket.id] = streamId;
             var user = dbUser.find(function (el) { return el.username === username; });
             if (!user) {
-                socket.emit('no_access');
+                socket.send({ error: 'no_access' });
                 return;
             }
             var isArtist = stream.artists.find(function (el) { return el === username; });
+            if (!jams[streamId])
+                jams[streamId] = { artists: new Set(), sockets: new Set() };
             if (isArtist) {
-                dbStream[streamId].artists.push(socket.id);
+                jams[streamId].artists.add(socket.id);
             }
             else if (!user.tickets.find(function (el) { return el.streamId === streamId; })) {
-                socket.emit('no_access');
+                socket.send({ error: 'no_access' });
                 return;
             }
-            else {
-                dbStream[streamId].viewers.push(socket.id);
-            }
-            socket.emit('artists', stream.artists.filter(function (id) { return id !== socket.id; }));
+            jams[streamId].sockets.add(socket.id);
+            socket.emit('connections', utils_1.filterJamSession(jams[streamId], function (id) { return id !== socket.id; }, true));
+        });
+        socket.on("send_signal", function (payload) {
+            io.to(payload.socketId).emit('new_connection', { signal: payload.signal, callerId: payload.callerID });
+        });
+        socket.on("receive_signal", function (payload) {
+            io.to(payload.callerId).emit('confirming_connection', { signal: payload.signal, socketId: socket.id });
         });
         socket.on('disconnect', function () {
-            var conn = socketToJams[socket.id];
-            var stream = dbStream[conn];
+            var streamId = socketToJam[socket.id];
+            var stream = jams[streamId];
             if (stream) {
-                stream.artists = stream.artists.filter(function (id) { return id !== socket.id; });
-                stream.viewers = stream.viewers.filter(function (id) { return id !== socket.id; });
-                jams[conn] = stream;
+                jams[streamId] = utils_1.filterJamSession(stream, function (id) { return id !== socket.id; });
             }
         });
     });

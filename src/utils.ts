@@ -1,10 +1,14 @@
 import { JamSession, SocketId } from './socket';
 
-export const filterJamSession = (jam: JamSession, filter: (el: SocketId) => boolean): JamSession => {
-	let newJam: JamSession = { artists: new Set(), sockets: new Set() }
+export const filterJamSession = (jam: JamSession, filter: (el: SocketId) => boolean, toArrays: boolean = false): JamSession | object => {
+	const artists = new Set<string>(), sockets = new Set<string>()
 
-	for (let v of newJam.artists) if (filter(v)) newJam.artists.add(v);
-	for (let v of newJam.sockets) if (filter(v)) newJam.sockets.add(v);
+	for (let v of jam.artists) if (filter(v)) artists.add(v);
+	for (let v of jam.sockets) if (filter(v)) sockets.add(v);
 
-	return newJam;
+	if (toArrays) {
+		return { artists: [...artists], sockets: [...sockets] }
+	} else {
+		return { artists, sockets };
+	}
 }

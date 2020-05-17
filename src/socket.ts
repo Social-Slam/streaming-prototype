@@ -1,6 +1,6 @@
 import { Server } from 'socket.io';
 import { filterJamSession } from './utils';
-
+import * as jwt from 'jsonwebtoken'
 export interface User {
 	username: string
 }
@@ -27,24 +27,25 @@ export type UserTypes = 'artist' | 'viewer'
 
 export interface ConnectionConnect {
 	streamId: Connection
-	username: string
-	type: UserTypes
+	token: string
 }
+
+const JWT_SECRET = 'your-256-bit-secret'
 
 export const socket = (io: Server): void => {
 
 	const dbStream = [
 		{
-			id: 1,
+			id: '1',
 			isFree: true,
-			artists: ['alfa'],
-			viewers: ['charlie'],
+			artists: ['alpha'],
+			viewers: ['bravo'],
 			startsAt: '2020-05-13 17:30:00',
 			isComplete: false,
 			socket: 'asdf'
 		},
 		{
-			id: 2,
+			id: '2',
 			isFree: false,
 			artists: ['echo', 'foxtrot'],
 			viewers: ['gamma', 'hotel']
@@ -53,11 +54,12 @@ export const socket = (io: Server): void => {
 
 	const dbUser = [
 		{
-			username: 'alfa',
-			isArtist: true
+			username: 'alpha',
+			isArtist: true,
+			tickets: []
 		},
 		{
-			username: 'charlie',
+			username: 'bravo',
 			isArtist: false,
 			tickets: [
 				{
@@ -71,17 +73,29 @@ export const socket = (io: Server): void => {
 	const socketToJam: Record<SocketId, Connection> = {}
 
 	io.on('connection', socket => {
-		socket.on("connect", ({ streamId, username }: ConnectionConnect) => {
-			const stream = dbStream[streamId]
+		socket.on("connect_to_room", (options: ConnectionConnect) => {
+			const { streamId, token } = options
+
+			let username
+			try {
+				const decoded = jwt.verify(token, JWT_SECRET)
+				username = decoded['sub']
+			} catch (e) {
+				console.warn(e)
+				socket.send({ error: 'invalid_token' })
+				return
+			}
+
+			const stream = dbStream.find(el => el.id === streamId)
 
 			if (!stream) {
-				socket.emit('invalid_connection')
+				socket.send({ error: 'invalid_connection' })
 				return
 			} else if (stream.isComplete) {
-				socket.emit('stream_complete')
+				socket.send({ msg: 'stream_complete' })
 				return
 			} else if (Date.parse(stream.startsAt) > Date.now()) {
-				socket.emit('stream_not_started')
+				socket.send({ msg: 'stream_not_started' })
 				return
 			}
 
@@ -90,23 +104,32 @@ export const socket = (io: Server): void => {
 			const user = dbUser.find(el => el.username === username)
 
 			if (!user) {
-				socket.emit('no_access')
+				socket.send({ error: 'no_access' })
 				return
 			}
 
 			const isArtist = stream.artists.find(el => el === username)
 
+			if (!jams[streamId]) jams[streamId] = { artists: new Set(), sockets: new Set() }
+
 			if (isArtist) {
 				jams[streamId].artists.add(socket.id)
-				io.to(streamId).emit('new_artist', { socket: socket.id })
 			} else if (!user.tickets.find(el => el.streamId === streamId)) {
-				socket.emit('no_access')
+				socket.send({ error: 'no_access' })
 				return
 			}
 
 			jams[streamId].sockets.add(socket.id)
 
-			socket.emit('connections', filterJamSession(jams[streamId], id => id !== socket.id))
+			socket.emit('connections', filterJamSession(jams[streamId], id => id !== socket.id, true))
+		});
+
+		socket.on("send_signal", payload => {
+			io.to(payload.socketId).emit('new_connection', { signal: payload.signal, callerId: payload.callerID });
+		});
+
+		socket.on("receive_signal", payload => {
+			io.to(payload.callerId).emit('confirming_connection', { signal: payload.signal, socketId: socket.id });
 		});
 
 		socket.on('disconnect', () => {
@@ -114,7 +137,7 @@ export const socket = (io: Server): void => {
 			const stream = jams[streamId]
 
 			if (stream) {
-				jams[streamId] = filterJamSession(stream, id => id !== socket.id);
+				jams[streamId] = filterJamSession(stream, id => id !== socket.id) as JamSession;
 			}
 		});
 	});
