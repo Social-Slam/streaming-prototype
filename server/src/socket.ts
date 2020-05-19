@@ -1,7 +1,7 @@
 import { Server } from 'socket.io';
 import { filterJamSession } from './utils';
 import * as jwt from 'jsonwebtoken'
-import { Connection, jamSessionServer, SocketId, payloadConnectToRoom, socketMessage, payloadNewConnection, payloadConfirmingConnection, payloadSendSignal } from '../../lib'
+import { Connection, jamSessionServer, SocketId, payloadConnectToRoom, socketMessage, payloadNewConnection, payloadConfirmingConnection, payloadSendSignal, payloadConnections } from '../../lib'
 
 const JWT_SECRET = 'your-256-bit-secret'
 
@@ -93,19 +93,20 @@ export const socket = (io: Server): void => {
 
 			jams[streamId].sockets.add(socket.id)
 
-			socket.emit('connections', filterJamSession(jams[streamId], id => id !== socket.id, true))
+			socket.emit('connections', filterJamSession(jams[streamId], id => id !== socket.id, true) as payloadConnections)
 		});
 
 		socket.on("send_signal", (payload: payloadSendSignal) => {
 			const returnPayload: payloadNewConnection = {
 				signal: payload.signal,
-				callerId: payload.callerId
+				callerId: payload.callerId,
+				isArtist: !!jams[payload.callerId].artists[payload.callerId]
 			}
 
 			io.to(payload.socketId).emit('new_connection', returnPayload);
 		});
 
-		socket.on("receive_signal", (payload: payloadNewConnection) => {
+		socket.on("return_signal", (payload: payloadNewConnection) => {
 			const returnPayload: payloadConfirmingConnection = {
 				signal: payload.signal,
 				socketId: socket.id

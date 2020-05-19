@@ -1,94 +1,113 @@
+import Peer, { SignalData } from 'simple-peer'
 import io from 'socket.io-client'
+import { payloadConfirmingConnection, payloadConnections, payloadConnectToRoom, payloadNewConnection, payloadReturnSignal, payloadSendSignal, SocketConnectionProps, SocketId, socketMessage, streamProps } from '../../lib/index'
 
-const socketConnection = ({ url, token, streamId }) => {
-  const socketRef = io(url)
+export const SocketConnection = async (props: SocketConnectionProps): Promise<void> => {
+	props.socketRef = io(props.url)
 
-  socketRef.emit('connect_to_room', {
-    streamId,
-    token,
-  })
+	if (props.createStream) {
+		if (props.stream) {
+			removeStream(props)
+		}
 
-  // artists: Set<string>, sockets: Set<string>
-  socketRef.on('connections', (payload) => {
-    const { artists, sockets } = payload
-    const peers = []
+		props.stream = await createStream()
+	}
 
-    sockets.forEach((socketId) => {
-      const peer = createPeer(socketId, socketRef.id)
-      peers.push(peer)
-      if (artists.contains(socketId)) {
-        peersRef.push({
-          socketId,
-          peer,
-        })
-      }
-    })
+	const socketConnection = () => {
+		props.socketRef.emit('connect_to_room', {
+			streamId: props.streamId,
+			token: props.token,
+		} as payloadConnectToRoom)
 
-    setViewerCount(peers.length)
-    setPeers(peers)
-  })
+		props.socketRef.on('connections', (payload: payloadConnections) => {
+			const { artists, sockets } = payload
 
-  socketRef.on('message', (payload) => {
-    if (payload.error) {
-      console.error(payload)
-    } else {
-      console.info(payload)
-    }
-  })
+			sockets.forEach((socketId) => initPeer(socketId, true, artists.includes(socketId)))
+		})
 
-  socketRef.on('new_connection', (payload) => {
-    const peer = addPeer(payload.signal, payload.callerId)
-    peers.push(peer)
-    //         peersRef.push({
-    //     socketId: payload.callerId,
-    //     peer,
-    //   })
-  })
+		props.socketRef.on('message', (payload: socketMessage) => {
+			if (payload.isError) {
+				console.error(payload)
+			} else {
+				console.info(payload)
+			}
+		})
 
-  socketRef.on('confirming_connection', (payload) => {
-    const connection = peersRef.find((p) => p.socketId === payload.socketId)
-    connection.peer.signal(payload.signal)
-  })
+		props.socketRef.on('new_connection', (payload: payloadNewConnection) => {
+			const peer = initPeer(payload.signal, false, payload.isArtist, payload.callerId)
+		})
 
-  return socketRef
+		props.socketRef.on('confirming_connection', (payload: payloadConfirmingConnection) => {
+			const connection = props.peersRef.current.find((peer) => peer.peerId === payload.socketId)
+			connection.peer.signal(payload.signal)
+		})
+
+		return props.socketRef
+	}
+
+	const initPeer = (
+		connection: string | Peer.SignalData,
+		initiator: boolean = false,
+		isArtist: boolean = false,
+		callerId: SocketId = props.socketRef.id
+	): Peer.Instance => {
+		const peerOptions: Peer.Options = {
+			initiator,
+			trickle: false,
+			stream: props.stream
+		}
+
+		const peer = new Peer(peerOptions)
+
+		peer.on('data', props.onIncomingMessage)
+
+		peer.on('signal', (signal: SignalData) => {
+			if (initiator) {
+				props.socketRef.emit('send_signal', {
+					socketId: connection,
+					callerId,
+					signal,
+				} as payloadSendSignal)
+			} else {
+				props.socketRef.emit('return_signal', {
+					callerId,
+					signal,
+				} as payloadReturnSignal)
+			}
+		})
+
+		if (!initiator) peer.signal(connection)
+
+		props.peersRef.current.push({ peerId: callerId, peer })
+
+		if (isArtist) props.setPeers([...props.peers, peer])
+
+		return peer
+	}
+
+	socketConnection()
 }
 
-const createPeer = (socketId, callerId) => {
-  const peer = new Peer({ initiator: true, trickle: false })
-
-  peer.on('signal', (signal) => {
-    socketRef.current.emit('send_signal', {
-      socketId,
-      callerId,
-      signal,
-    })
-  })
-
-  return peer
+export const messagePeers = (peers: Peer.Instance[], newMsg: string): void => {
+	peers.forEach((peer) => {
+		peer.send(newMsg)
+	})
 }
 
-const addPeer = (incomingSignal, callerId) => {
-  const peer = new Peer({
-    initiator: false,
-    trickle: false,
-  })
-
-  peer.on('signal', (signal) => {
-    socketRef.current.emit('receive_signal', { signal, callerId })
-  })
-
-  peer.on('data', (newMsg) => {
-    chatLog.push(newMsg)
-    setChatLog(chatLog)
-  })
-
-  peer.signal(incomingSignal)
-
-  return peer
+export const createStream = async () => {
+	return await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
 }
 
-const messagePeers = (newMsg) => {
-  peers.forEach((peer) => {
-    peer.send(newMsg)
-  })
+export const addStream = async (props: streamProps): Promise<void> => {
+	if (!props.stream) {
+		props.stream = await createStream()
+	}
+
+	props.peers.forEach(el => el.addStream(props.stream))
 }
+
+export const removeStream = (props: streamProps): void => {
+	props.peers.forEach(el => el.removeStream(props.stream))
+}
+
+export default { SocketConnection, addStream, removeStream, messagePeers }

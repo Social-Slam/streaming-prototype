@@ -1,4 +1,6 @@
 import * as Peer from 'simple-peer'
+
+//Server
 export type jamSessionServer = {
 	artists: Set<SocketId>
 	sockets: Set<SocketId>
@@ -16,20 +18,50 @@ export type payloadConnectToRoom = {
 	streamId: Connection
 	token: string
 }
-export type socketMessage = {
-	isError?: boolean
-	msg?: string
-}
 export type payloadNewConnection = {
 	callerId: SocketId
-	signal: any //Peer.SignalData
+	signal: Peer.SignalData
+	isArtist: boolean
 }
 export type payloadSendSignal = {
 	callerId: SocketId
-	signal: any //Peer.SignalData
+	signal: Peer.SignalData
 	socketId: SocketId
+}
+export type payloadReturnSignal = {
+	callerId: SocketId
+	signal: Peer.SignalData
 }
 export type payloadConfirmingConnection = {
 	socketId: SocketId
 	signal: any
+}
+export type socketMessage = {
+	isError?: boolean
+	msg?: string
+}
+
+
+//Client
+export type peerT = {
+	peerId: string
+	peer: Peer.Instance
+}
+
+export type streamProps = {
+	peers: Peer.Instance[]
+	stream?: MediaStream
+}
+
+export type SocketConnectionProps = {
+	url: string
+	streamId: string
+	token: string
+	socketRef: SocketIOClient.Socket
+	peersRef: React.MutableRefObject<peerT[]>
+	peers: Peer.Instance[]
+	setPeers: React.Dispatch<React.SetStateAction<Peer.Instance[]>>
+	stream?: MediaStream
+	createStream?: boolean
+	onIncomingMessage?: (msg: any) => void
 }
