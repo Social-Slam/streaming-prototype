@@ -1,34 +1,7 @@
 import { Server } from 'socket.io';
 import { filterJamSession } from './utils';
 import * as jwt from 'jsonwebtoken'
-export interface User {
-	username: string
-}
-
-export interface Artist extends User {
-
-
-}
-
-export interface Viewer extends User {
-
-}
-
-export interface JamSession {
-	artists: Set<SocketId>
-	sockets: Set<SocketId>
-}
-
-export type Connection = string
-export type SocketId = string
-
-
-export type UserTypes = 'artist' | 'viewer'
-
-export interface ConnectionConnect {
-	streamId: Connection
-	token: string
-}
+import { Connection, jamSessionServer, SocketId, payloadConnectToRoom, socketMessage, payloadNewConnection, payloadConfirmingConnection, payloadSendSignal } from '../../lib'
 
 const JWT_SECRET = 'your-256-bit-secret'
 
@@ -69,33 +42,32 @@ export const socket = (io: Server): void => {
 		}
 	]
 
-	const jams: Record<Connection, JamSession> = {};
+	const jams: Record<Connection, jamSessionServer> = {};
 	const socketToJam: Record<SocketId, Connection> = {}
 
 	io.on('connection', socket => {
-		socket.on("connect_to_room", (options: ConnectionConnect) => {
-			const { streamId, token } = options
+		socket.on("connect_to_room", ({ streamId, token }: payloadConnectToRoom) => {
+			let username: string
 
-			let username
 			try {
 				const decoded = jwt.verify(token, JWT_SECRET)
 				username = decoded['sub']
 			} catch (e) {
 				console.warn(e)
-				socket.send({ error: 'invalid_token' })
+				sendMessage('invalid_token', true)
 				return
 			}
 
 			const stream = dbStream.find(el => el.id === streamId)
 
 			if (!stream) {
-				socket.send({ error: 'invalid_connection' })
+				sendMessage('invalid_connection', true)
 				return
 			} else if (stream.isComplete) {
-				socket.send({ msg: 'stream_complete' })
+				sendMessage('stream_complete')
 				return
 			} else if (Date.parse(stream.startsAt) > Date.now()) {
-				socket.send({ msg: 'stream_not_started' })
+				sendMessage('stream_not_started')
 				return
 			}
 
@@ -104,7 +76,7 @@ export const socket = (io: Server): void => {
 			const user = dbUser.find(el => el.username === username)
 
 			if (!user) {
-				socket.send({ error: 'no_access' })
+				sendMessage('no_access', true)
 				return
 			}
 
@@ -115,7 +87,7 @@ export const socket = (io: Server): void => {
 			if (isArtist) {
 				jams[streamId].artists.add(socket.id)
 			} else if (!user.tickets.find(el => el.streamId === streamId)) {
-				socket.send({ error: 'no_access' })
+				sendMessage('no_access', true)
 				return
 			}
 
@@ -124,12 +96,22 @@ export const socket = (io: Server): void => {
 			socket.emit('connections', filterJamSession(jams[streamId], id => id !== socket.id, true))
 		});
 
-		socket.on("send_signal", payload => {
-			io.to(payload.socketId).emit('new_connection', { signal: payload.signal, callerId: payload.callerID });
+		socket.on("send_signal", (payload: payloadSendSignal) => {
+			const returnPayload: payloadNewConnection = {
+				signal: payload.signal,
+				callerId: payload.callerId
+			}
+
+			io.to(payload.socketId).emit('new_connection', returnPayload);
 		});
 
-		socket.on("receive_signal", payload => {
-			io.to(payload.callerId).emit('confirming_connection', { signal: payload.signal, socketId: socket.id });
+		socket.on("receive_signal", (payload: payloadNewConnection) => {
+			const returnPayload: payloadConfirmingConnection = {
+				signal: payload.signal,
+				socketId: socket.id
+			}
+
+			io.to(payload.callerId).emit('confirming_connection', returnPayload);
 		});
 
 		socket.on('disconnect', () => {
@@ -137,9 +119,14 @@ export const socket = (io: Server): void => {
 			const stream = jams[streamId]
 
 			if (stream) {
-				jams[streamId] = filterJamSession(stream, id => id !== socket.id) as JamSession;
+				jams[streamId] = filterJamSession(stream, id => id !== socket.id) as jamSessionServer;
 			}
 		});
+
+		const sendMessage = (message: string, isError: boolean = false) => {
+			const payload: socketMessage = { msg: message, isError }
+			socket.send(payload)
+		}
 	});
 
 }
