@@ -47,6 +47,7 @@ export const socket = (io: Server): void => {
 
 	io.on('connection', socket => {
 		socket.on("connect_to_room", ({ streamId, token }: payloadConnectToRoom) => {
+			console.log("connect_to_room")
 			let username: string
 
 			try {
@@ -93,10 +94,12 @@ export const socket = (io: Server): void => {
 
 			jams[streamId].sockets.add(socket.id)
 
-			socket.emit('connections', filterJamSession(jams[streamId], id => id !== socket.id, true) as payloadConnections)
+			socket.emit('connections', filterJamSession(jams[streamId], socket.id, true) as payloadConnections)
 		});
 
 		socket.on("send_signal", (payload: payloadSendSignal) => {
+			console.log("send_signal", payload)
+
 			const returnPayload: payloadNewConnection = {
 				signal: payload.signal,
 				callerId: payload.callerId,
@@ -107,6 +110,8 @@ export const socket = (io: Server): void => {
 		});
 
 		socket.on("return_signal", (payload: payloadNewConnection) => {
+			console.log("return_signal", payload)
+
 			const returnPayload: payloadConfirmingConnection = {
 				signal: payload.signal,
 				socketId: socket.id
@@ -116,6 +121,8 @@ export const socket = (io: Server): void => {
 		});
 
 		socket.on('disconnect', () => {
+			console.log("disconnect")
+
 			const streamId: Connection = socketToJam[socket.id]
 			const stream = jams[streamId]
 

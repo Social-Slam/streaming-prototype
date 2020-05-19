@@ -1,4 +1,5 @@
 import * as Peer from 'simple-peer'
+import { MutableRefObject } from 'react'
 
 //Server
 export type jamSessionServer = {
@@ -50,18 +51,18 @@ export type peerT = {
 
 export type streamProps = {
 	peers: Peer.Instance[]
-	stream?: MediaStream
+	stream?: React.MutableRefObject<MediaStream>
 }
 
 export type SocketConnectionProps = {
 	url: string
 	streamId: string
 	token: string
-	socketRef: SocketIOClient.Socket
+	socketRef: React.MutableRefObject<SocketIOClient.Socket>
 	peersRef: React.MutableRefObject<peerT[]>
 	peers: Peer.Instance[]
 	setPeers: React.Dispatch<React.SetStateAction<Peer.Instance[]>>
-	stream?: MediaStream
-	createStream?: boolean
+	streamRef: any//React.MutableRefObject<MediaStream>
+	// createStream?: boolean
 	onIncomingMessage?: (msg: any) => void
 }

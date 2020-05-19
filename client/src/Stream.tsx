@@ -6,11 +6,11 @@ import { SocketConnection, createStream } from './Connection'
 import { useParams } from 'react-router-dom'
 import { SocketConnectionProps, peerT } from '../../lib/index'
 
-export const Stream: FC = async (props) => {
+export const Stream = () => {
 	const socketRef = useRef<SocketIOClient.Socket>()
 	const peersRef = useRef<peerT[]>([])
+	const streamRef = useRef()
 	const [peers, setPeers] = useState([])
-	const [streamers, setStreamers] = useState([])
 	const { streamId } = useParams()
 
 	const socketOptions: SocketConnectionProps = {
@@ -19,11 +19,11 @@ export const Stream: FC = async (props) => {
 			'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhbHBoYSIsImlhdCI6MTUxNjIzOTAyMn0.ok55AeE5LVEUYuWU4eLyBjdomKRBNtMoxuA3tkBMRuY',
 		// token:
 		// 	'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJicmF2byIsImlhdCI6MTUxNjIzOTAyMn0.n-Fsy8Jx6q9IubgaNZUgooNcsUG_58OVgE9MUTLkMVs',
-		createStream: true,
 		streamId,
 		peers,
+		streamRef,
 		setPeers,
-		socketRef: socketRef.current,
+		socketRef,
 		peersRef,
 	}
 
@@ -31,14 +31,18 @@ export const Stream: FC = async (props) => {
 		SocketConnection(socketOptions)
 	}, [])
 
-	return streamers.map(el => <VideoCard event={{
-		host: {
-			first_name: "Name"
-		},
-		video: el,
-		title: "Title",
-		datetime: "2020-05-19 14:30:00"
-	}} />)
+	return <Box>
+		<button onClick={async () => streamRef.current.srcObject = await createStream()}>Click me</button>
+		<VideoCard options={streamRef} />
+		{peers.map(el => <VideoCard event={{
+			host: {
+				first_name: "Name"
+			},
+			video: el,
+			title: "Title",
+			datetime: "2020-05-19 14:30:00"
+		}} />)}
+	</Box>
 }
 
 export default Stream

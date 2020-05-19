@@ -1,10 +1,14 @@
 import { jamSessionServer, jamSessionClient, SocketId } from '../../lib';
 
-export const filterJamSession = (jam: jamSessionServer, filter: (el: SocketId) => boolean, toArrays: boolean = false): jamSessionClient | jamSessionServer => {
+export const filterJamSession = (jams: jamSessionServer, socketId, toArrays: boolean = false): jamSessionClient | jamSessionServer => {
 	const artists = new Set<string>(), sockets = new Set<string>()
 
-	for (let v of jam.artists) if (filter(v)) artists.add(v);
-	for (let v of jam.sockets) if (filter(v)) sockets.add(v);
+	jams.artists.forEach(id => {
+		if (id !== socketId) artists.add(id);
+	})
+	jams.sockets.forEach(id => {
+		if (id !== socketId) sockets.add(id);
+	})
 
 	if (toArrays) {
 		return { artists: [...artists], sockets: [...sockets] }
