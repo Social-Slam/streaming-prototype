@@ -11,7 +11,7 @@ export const socket = (io: Server): void => {
 		{
 			id: '1',
 			isFree: true,
-			artists: ['alpha'],
+			artists: ['alpha', 'bravo'],
 			viewers: ['bravo'],
 			startsAt: '2020-05-13 17:30:00',
 			isComplete: false,
@@ -33,6 +33,11 @@ export const socket = (io: Server): void => {
 		},
 		{
 			username: 'bravo',
+			isArtist: true,
+			tickets: []
+		},
+		{
+			username: 'charlie',
 			isArtist: false,
 			tickets: [
 				{
@@ -121,13 +126,13 @@ export const socket = (io: Server): void => {
 		});
 
 		socket.on('disconnect', () => {
-			console.log("disconnect")
+			console.log("disconnect", socket.id)
 
 			const streamId: Connection = socketToJam[socket.id]
 			const stream = jams[streamId]
 
 			if (stream) {
-				jams[streamId] = filterJamSession(stream, id => id !== socket.id) as jamSessionServer;
+				jams[streamId] = filterJamSession(stream, socket.id) as jamSessionServer;
 			}
 		});
 

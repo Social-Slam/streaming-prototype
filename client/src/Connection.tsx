@@ -57,9 +57,11 @@ export const SocketConnection = async (props: SocketConnectionProps): Promise<vo
 		const peerOptions: Peer.Options = {
 			initiator,
 			trickle: false,
-			stream: props.streamRef.current
 		}
 
+		if (props.streamRef.current.srcObject) peerOptions.stream = props.streamRef.current.srcObject
+
+		console.log(peerOptions)
 		const peer = new Peer(peerOptions)
 
 		peer.on('data', props.onIncomingMessage)
@@ -84,7 +86,7 @@ export const SocketConnection = async (props: SocketConnectionProps): Promise<vo
 		if (!initiator) peer.signal(connection)
 
 		props.peersRef.current.push({ peerId: callerId, peer })
-
+		console.log(isArtist)
 		if (isArtist) props.setPeers([...props.peers, peer])
 
 		return peer

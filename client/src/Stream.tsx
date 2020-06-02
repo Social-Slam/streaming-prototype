@@ -11,12 +11,13 @@ export const Stream = () => {
 	const peersRef = useRef<peerT[]>([])
 	const streamRef = useRef()
 	const [peers, setPeers] = useState([])
-	const { streamId } = useParams()
+	const { streamId, token } = useParams()
 
 	const socketOptions: SocketConnectionProps = {
 		url: 'localhost:4000',
-		token:
-			'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhbHBoYSIsImlhdCI6MTUxNjIzOTAyMn0.ok55AeE5LVEUYuWU4eLyBjdomKRBNtMoxuA3tkBMRuY',
+		token,
+		// token:
+		// 	'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhbHBoYSIsImlhdCI6MTUxNjIzOTAyMn0.ok55AeE5LVEUYuWU4eLyBjdomKRBNtMoxuA3tkBMRuY',
 		// token:
 		// 	'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJicmF2byIsImlhdCI6MTUxNjIzOTAyMn0.n-Fsy8Jx6q9IubgaNZUgooNcsUG_58OVgE9MUTLkMVs',
 		streamId,
@@ -33,7 +34,7 @@ export const Stream = () => {
 
 	return <Box>
 		<button onClick={async () => streamRef.current.srcObject = await createStream()}>Click me</button>
-		<VideoCard options={streamRef} />
+		{streamRef && <VideoCard options={streamRef} />}
 		{peers.map(el => <VideoCard event={{
 			host: {
 				first_name: "Name"
