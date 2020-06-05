@@ -7,7 +7,7 @@ const JWT_SECRET = 'your-256-bit-secret'
 
 export const socket = (io: Server): void => {
 
-	const dbStream = [
+	const dbStream:Array<Record<string, any>> = [
 		{
 			id: '1',
 			isFree: true,
