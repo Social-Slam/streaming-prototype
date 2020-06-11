@@ -2,3 +2,8 @@ node_modules
 dist
 .parcel-cache
 yarn-error.log
+.idea
+target
+.vscode
+.history
+.env

@@ -11,7 +11,7 @@ export const filterJamSession = (jams: jamSessionServer, socketId, toArrays: boo
 	})
 
 	if (toArrays) {
-		return { artists: [...artists], sockets: [...sockets] }
+		return { artists: Array.from(artists), sockets: Array.from(sockets) }
 	} else {
 		return { artists, sockets };
 	}
