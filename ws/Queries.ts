@@ -31,8 +31,8 @@ export type GetTokenResponse = {
   };
 };
 
-export const getToken = (username: string, password: string) =>
-  `mutation {
+export const getToken = async (username: string, password: string) => {
+  const query = `mutation {
   tokenAuth(
     username: "${username}"
     password: "${password}"
@@ -47,10 +47,13 @@ export const getToken = (username: string, password: string) =>
       username
     }
   }
-}`;
+}`
 
-export const verifyToken = (token: string) =>
-  `mutation {
+  return await graphQlRequest<GetTokenResponse>(query)
+}
+
+export const verifyToken = async (token: string) => {
+  const query = `mutation {
               verifyToken(
                 token: "${token}"
               ) {
@@ -58,10 +61,12 @@ export const verifyToken = (token: string) =>
                 errors,
                 payload
               }
-            }`;
+            }`
+  return await graphQlRequest<VerifyTokenResponse>(query)
+}
 
-export const getUsers = () =>
-  `{
+export const getUsers = async () => {
+  const query = `{
               users {
                 edges {
                   node {
@@ -69,4 +74,19 @@ export const getUsers = () =>
                   }
                 }
               }
-            }`;
+            }`
+  return await graphQlRequest(query)
+}
+
+export const graphQlRequest = async <T = any>(query: any): Promise<T> => {
+  const result = await fetch(Deno.env.get('GRAPHQL_URL')!, {
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    },
+    method: 'post',
+    body: JSON.stringify({query}),
+  })
+
+  return (await result.json()) as unknown as T
+}
