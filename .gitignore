@@ -4,3 +4,6 @@ dist
 yarn-error.log
 .idea
 target
+.vscode
+.history
+.env
