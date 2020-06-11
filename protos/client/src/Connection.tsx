@@ -1,6 +1,6 @@
 import Peer, { SignalData } from 'simple-peer'
 import io from 'socket.io-client'
-import { payloadConfirmingConnection, payloadConnections, payloadConnectToRoom, payloadNewConnection, payloadReturnSignal, payloadSendSignal, SocketConnectionProps, SocketId, socketMessage, streamProps } from '../../lib/index'
+import { payloadConfirmingConnection, payloadConnections, payloadConnectToRoom, payloadNewConnection, payloadReturnSignal, payloadSendSignal, SocketConnectionProps, SocketId, socketMessage, streamProps } from '../../lib/types.ts'
 
 export const SocketConnection = async (props: SocketConnectionProps): Promise<void> => {
 	props.socketRef.current = io(props.url)

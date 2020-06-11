@@ -1,6 +1,6 @@
 import {serve} from 'https://deno.land/std/http/server.ts'
 import {acceptWebSocket, isWebSocketCloseEvent, WebSocket} from 'https://deno.land/std/ws/mod.ts'
-import {Connection, DBStream, DBUser, SocketId} from '../lib/index.ts'
+import {Connection, DBStream, DBUser, SocketId} from '../lib/types.ts'
 import {getToken, verifyToken} from './Queries.ts'
 import 'https://deno.land/x/dotenv/load.ts'
 

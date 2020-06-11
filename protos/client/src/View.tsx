@@ -7,7 +7,7 @@ import { Box, Text, Flex, Button } from 'rebass'
 import { Textarea } from '@rebass/forms'
 import VideoCard from './VideoCard'
 import { SocketConnection, messagePeers } from './Connection'
-import { SocketConnectionProps, peerT } from '../../lib/index'
+import { SocketConnectionProps, peerT } from '../../lib/types.ts'
 import { useParams } from 'react-router-dom'
 
 

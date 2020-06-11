@@ -1,6 +1,6 @@
 import * as dotenv from 'dotenv'
 import * as ws from "ws"
-import {Connection, jamSessionServer, SocketId} from '../lib'
+import {Connection, jamSessionServer, SocketId} from '../lib/types.ts'
 
 dotenv.config()
 

@@ -4,7 +4,7 @@ import { Box } from 'rebass'
 import VideoCard from './VideoCard'
 import { SocketConnection, createStream } from './Connection'
 import { useParams } from 'react-router-dom'
-import { SocketConnectionProps, peerT } from '../../lib/index'
+import { SocketConnectionProps, peerT } from '../../lib/types.ts'
 
 export const Stream = () => {
 	const socketRef = useRef<SocketIOClient.Socket>()
