@@ -15,7 +15,7 @@ const dbStream: DBStream[] = [
   {
     id: '1',
     isFree: true,
-    artists: ['social_slam_admin', 'bravo'],
+    artists: [Deno.env.get('GRAPHQL_USER')!, 'bravo'],
     viewers: ['bravo'],
     startsAt: '2020-05-13 17:30:00',
     isComplete: false,
@@ -34,7 +34,7 @@ const dbStream: DBStream[] = [
 
 const dbUser: DBUser[] = [
   {
-    username: 'social_slam_admin',
+    username: Deno.env.get('GRAPHQL_USER')!,
     isArtist: true,
     tickets: [],
   },
