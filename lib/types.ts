@@ -1,5 +1,16 @@
-import { SignalData } from "https://cdn.pika.dev/simple-peer@^9.7.2";
 import { WebSocket } from "https://deno.land/std/ws/mod.ts";
+
+export interface SignalData {
+  type?: "offer" | "pranswer" | "answer" | "rollback";
+  sdp?: any;
+  candidate?: any;
+}
+
+export type ConnectionReturnT<T> = [
+  WebSocket,
+  Record<string, T>,
+  T[],
+];
 
 export interface DBStream {
   id: string;
